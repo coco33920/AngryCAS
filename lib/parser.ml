@@ -1,6 +1,6 @@
 module Parser = struct
-  type atom = Int of int | Float of float | Var of string
-  type infix = PLUS | MULT
+  type atom = Int of int | Float of float | Var of string | Bool of bool
+  type infix = PLUS | MULT | EQUAL
   type expr = Atom of atom | INFIX of infix
   type parameters = Null | Expression of expr
   type 'a ast = Nil | Node of 'a * 'a ast * 'a ast
@@ -19,6 +19,7 @@ module Parser = struct
     | Lexer.VAR x -> Expression(Atom(Var(x)))
     | Lexer.PLUS -> Expression(INFIX(PLUS))
     | Lexer.MULT -> Expression(INFIX(MULT))
+    | Lexer.BOOL b -> Expression(Atom(Bool(b)))
     | _ -> Null 
 
 
@@ -26,10 +27,12 @@ module Parser = struct
     | Int i -> Printf.sprintf "{ParsedInt %d}" i 
     | Float f -> Printf.sprintf "{ParsedFloat %f}" f
     | Var x -> Printf.sprintf "{ParsedVar %s}" x
+    | Bool b -> Printf.sprintf "{ParsedBool %b}" b
 
   let sprint_infix = function
     | PLUS -> "{+}" 
     | MULT -> "{*}"
+    | EQUAL -> "{=}"
 
   let sprint_expr = function
     | Atom a -> Printf.sprintf "(Atom: %s)" (sprint_atom a)
@@ -47,12 +50,6 @@ module Parser = struct
 
     let parse_operation list_of_tokens =
     let rec aux last_param lst =
-      (* debug : if List.length lst > 0 then
-       Printf.printf "Node: %s ; Token: %s" (print_ast last_param) (Lexer.print_token (List.hd lst))
-      else 
-        Printf.printf "Node: %s" (print_ast last_param);
-               print_newline ();
-*)
 
        match last_param,lst with
       (*Parenthesis*)
@@ -70,20 +67,7 @@ module Parser = struct
       | Node(e,g,d),Lexer.LPAR::q -> let rest,ast = aux null_node q 
         in let node = Node(Expression (INFIX (MULT)),Node(e,g,d),ast)
         in aux node rest
-      
-        (*Other*)
-      (*| Node(e,Nil,Nil),Lexer.LPAR::q -> let rest,ast = aux null_node q 
-        in let node = Node(e,ast,Nil) in
-        aux node rest
-      
-      
-      | Node(e,g,Nil),Lexer.LPAR::q -> let rest,ast = aux null_node q 
-        in let node = Node(e,g,ast) in
-        aux node rest
-
-      | Node(e,Nil,d),Lexer.LPAR::q -> let rest,ast = aux null_node q 
-        in let node = Node(e,ast,d) in
-        aux node rest*)
+    
 
       | _,Lexer.RPAR::q -> q,last_param
 
@@ -107,8 +91,10 @@ module Parser = struct
       | Nil,t::q -> aux (Node(token_to_expr t, Nil, Nil)) q
       | Node(e,g,d),Lexer.PLUS::q -> aux (Node(Expression(INFIX(PLUS)), Node(e,g,d),Nil)) q
       | Node(e,g,d),Lexer.MULT::q -> aux (Node(Expression(INFIX(MULT)), Node(e,g,d), Nil)) q
+      | Node(e,g,d),Lexer.EQUAL::q -> aux (Node(Expression(INFIX EQUAL),Node(e,g,d),Nil)) q
       | Node(Expression(INFIX(i)),g,Nil),t::q -> aux (Node(Expression (INFIX(i)),g,token_to_ast t)) q
       | Node(Expression(INFIX(i)),Nil,d),t::q -> aux (Node(Expression(INFIX(i)),token_to_ast t,d)) q
+      | Node(Expression(INFIX(i)),g,d),t::q -> aux (Node(token_to_expr t, Node(Expression(INFIX(i)),g,d), Nil)) q
       | Node(e,Nil,Nil),t::q -> aux (Node(e,token_to_ast t,Nil)) q
       | Node(e,g,Nil),t::q -> aux (Node(e,g,token_to_ast t)) q
       | Node(e,g,d),t::q -> aux (Node(Expression(INFIX(MULT)), Node(e,g,d), token_to_ast t)) q

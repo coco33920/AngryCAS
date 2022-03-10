@@ -1,5 +1,5 @@
 open Angrycas.AngryCAS
-let str = "40x+(30x)";;
+let str = "3=3";;
 print_endline str;;
 let lexbuf = Lexing.from_string str;;
 let list = lex_to_list lexbuf;;

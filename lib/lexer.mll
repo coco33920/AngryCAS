@@ -9,6 +9,7 @@
   | LPAR
   | RPAR
   | EQUAL 
+  | BOOL of bool
   | NULL
   | EOF
 
@@ -83,6 +84,8 @@ rule read = parse
   | "(" {LPAR}
   | ")" {RPAR}
   | "=" {EQUAL}
+  | "true" {BOOL true}
+  | "false" {BOOL false}
   | "+" {PLUS} 
   | "*" {MULT}
   | _ {raise (SyntaxError ("error while lexing" ^ (Lexing.lexeme lexbuf)))}
