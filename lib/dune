@@ -1,2 +1,9 @@
+(menhir
+ (modules parser))
+
+(ocamllex lexer)
+
 (library
+ (modules cas lexer parser angrycas)
+ (libraries core fmt)
  (name angrycas))

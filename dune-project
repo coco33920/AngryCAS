@@ -1,5 +1,5 @@
 (lang dune 3.0)
-
+(using menhir 2.1)
 (name angrycas)
 
 (generate_opam_files true)
@@ -8,8 +8,6 @@
  (github coco33920/AngryCAS))
 
 (authors "Charlotte THOMAS")
-
-(maintainers "Maintainer Name")
 
 (license LICENSE)
 
@@ -20,5 +18,4 @@
  (synopsis "A Really Angry CAS")
  (description "Ever wanted a Computer Algebra System that kicks your ass when you're doing simple algebra? No? Well this exist
  either way...")
- (depends ocaml dune))
-
+ (depends ocaml dune ocamllex menhir))

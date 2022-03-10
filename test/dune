@@ -1,2 +1,3 @@
 (test
- (name angrycas))
+ (name angrycas)
+ (libraries angrycas))
