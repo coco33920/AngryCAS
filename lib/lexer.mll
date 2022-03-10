@@ -5,6 +5,7 @@
   | FLOAT of float 
   | VAR of string
   | PLUS
+  | MINUS
   | MULT 
   | LPAR
   | RPAR
@@ -25,6 +26,7 @@ let print_token = function
   | FLOAT f -> Printf.sprintf "{Float : %f}" f
   | VAR x -> Printf.sprintf "{Var : %s}" x
   | PLUS -> "{+}"
+  | MINUS -> "{-}"
   | MULT -> "{*}"
   | LPAR -> "{(}"
   | RPAR -> "{)}"
@@ -84,6 +86,7 @@ rule read = parse
   | "(" {LPAR}
   | ")" {RPAR}
   | "=" {EQUAL}
+  | "-" {MINUS}
   | "true" {BOOL true}
   | "false" {BOOL false}
   | "+" {PLUS} 

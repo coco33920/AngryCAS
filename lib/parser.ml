@@ -1,6 +1,6 @@
 module Parser = struct
   type atom = Int of int | Float of float | Var of string | Bool of bool
-  type infix = PLUS | MULT | EQUAL
+  type infix = PLUS | MULT | MINUS | EQUAL 
   type expr = Atom of atom | INFIX of infix
   type parameters = Null | Expression of expr
   type 'a ast = Nil | Node of 'a * 'a ast * 'a ast
@@ -11,6 +11,8 @@ module Parser = struct
     | Lexer.VAR x -> Node(Expression(Atom(Var(x))),Nil,Nil)
     | Lexer.PLUS -> Node(Expression(INFIX(PLUS)),Nil,Nil)
     | Lexer.MULT -> Node(Expression(INFIX(MULT)),Nil,Nil)
+    | Lexer.BOOL b -> Node(Expression(Atom(Bool(b))),Nil,Nil)
+    | Lexer.MINUS -> Node(Expression(INFIX(MINUS)),Nil,Nil)
     | _ -> null_node
 
   let token_to_expr = function
@@ -20,6 +22,7 @@ module Parser = struct
     | Lexer.PLUS -> Expression(INFIX(PLUS))
     | Lexer.MULT -> Expression(INFIX(MULT))
     | Lexer.BOOL b -> Expression(Atom(Bool(b)))
+    | Lexer.MINUS -> Expression(INFIX(MINUS))
     | _ -> Null 
 
 
@@ -33,6 +36,7 @@ module Parser = struct
     | PLUS -> "{+}" 
     | MULT -> "{*}"
     | EQUAL -> "{=}"
+    | MINUS -> "{-}"
 
   let sprint_expr = function
     | Atom a -> Printf.sprintf "(Atom: %s)" (sprint_atom a)
@@ -42,7 +46,7 @@ module Parser = struct
     | Null -> "Null"
   
   let rec print_ast = function
-    | Nil -> "Nil"
+    | Nil -> ""
     | Node(p, g, d) -> Printf.sprintf "(%s[%s;%s])" (sprint_param p) (print_ast g) (print_ast d)
   
   let print_ast_list ast = List.iter (fun c -> print_string (print_ast c); print_newline ()) ast
@@ -58,6 +62,9 @@ module Parser = struct
           let node = ast
           in  aux node rest
       
+      | Node(Expression (INFIX(EQUAL)),g,Nil),Lexer.LPAR::q -> let rest,ast = aux null_node q 
+        in let node = Node(Expression (INFIX (EQUAL)), g,ast)
+        in aux node rest
         (*Addition*)
       | Node(Expression (INFIX(PLUS)),g,Nil),Lexer.LPAR::q -> let rest,ast = aux null_node q
         in let node = Node(Expression (INFIX (PLUS)), g, ast)

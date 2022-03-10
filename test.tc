@@ -1,0 +1,27 @@
+((INFIX: {*})
+    [((INFIX: {=})
+        [((INFIX: {*})
+            [((Atom: {ParsedInt 3})[Nil;Nil]);
+            ((Atom: {ParsedVar x})[Nil;Nil])])
+            ;Nil])
+        ;((INFIX: {*})
+        [((Atom: {ParsedInt 3})[Nil;Nil]);((Atom: {ParsedVar x})[Nil;Nil])])])
+((INFIX: {*})
+[
+    ((INFIX: {=})
+    [
+        ((INFIX: {*})
+        [
+            ((Atom: {ParsedInt 3})[;]);
+            ((Atom: {ParsedVar x})[;])
+        ]);
+    ]);
+    ((INFIX: {*})
+    [
+        ((Atom: {ParsedInt 3})[;])
+        ;((Atom: {ParsedVar x})[;])
+    ])
+])
+
+*(=(*(3,x),*(3,x)),NULL)
+
