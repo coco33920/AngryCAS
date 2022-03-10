@@ -47,12 +47,13 @@ module Parser = struct
 
     let parse_operation list_of_tokens =
     let rec aux last_param lst =
-      if List.length lst > 0 then
+      (* debug : if List.length lst > 0 then
        Printf.printf "Node: %s ; Token: %s" (print_ast last_param) (Lexer.print_token (List.hd lst))
       else 
         Printf.printf "Node: %s" (print_ast last_param);
+               print_newline ();
+*)
 
-       print_newline ();
        match last_param,lst with
       (*Parenthesis*)
       

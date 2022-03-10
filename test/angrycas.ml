@@ -1,5 +1,9 @@
 open Angrycas.AngryCAS
-let str = "40*y";;
-let lexbuf = Lexing.from_string str in
-let list = lex_to_list lexbuf in print_endline (Lexer.print_token_list list);
-let parsed = Parser.parse_operation list in print_newline (); print_endline (Parser.print_ast parsed);;
+let str = "40x+(30x)";;
+print_endline str;;
+let lexbuf = Lexing.from_string str;;
+let list = lex_to_list lexbuf;;
+let parsed = Parser.parse_operation list;;
+let _ = print_endline (Parser.print_ast parsed);;
+
+let param = CAS.reduce_ast parsed in CAS.print_expr param;;
