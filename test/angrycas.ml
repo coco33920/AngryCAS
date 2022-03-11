@@ -1,5 +1,5 @@
 open Angrycas.AngryCAS
-let str = "3x+1=(3x+1)";;
+let str = "x=(2x+1)";;
 print_endline str;;
 let lexbuf = Lexing.from_string str;;
 let list = lex_to_list lexbuf;;
@@ -9,7 +9,7 @@ let transformed = CAS.transform_ast_to_expression parsed;;
 let _ = CAS.print_expr transformed;;
 let _ = print_newline ();;
 
-let _ = CAS.f();;
+(*let _ = CAS.f();;*)
 
 let reduced = CAS.reduce_expression transformed;;
 let _ = CAS.print_expr reduced;;
