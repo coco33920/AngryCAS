@@ -1,5 +1,5 @@
 open Angrycas.AngryCAS
-let str = "x=(2x+1)";;
+let str = "10(10+(10+x))";;
 print_endline str;;
 let lexbuf = Lexing.from_string str;;
 let list = lex_to_list lexbuf;;

@@ -3,6 +3,10 @@ include Parser.Parser
 
   type numbers = INT of int | FLOAT of float 
   type var = Atom of string | Vars of numbers * var
+  
+  (*1 degree implementation of a multi-variable polynomial structure*)
+  (*TODO: a better structure*)
+  type monome = Monome of var | SUM of monome * monome
   type expr = 
     | Number of numbers 
     | BOOL of bool 
@@ -12,7 +16,6 @@ include Parser.Parser
     | EQUAL of expr * expr 
     | MINUS of expr * expr
     | NULL
-
 
 
   let add_reals a b = 
@@ -46,6 +49,28 @@ include Parser.Parser
         | Atom x -> Vars(acc,Atom(x))
         | Vars(l,x) -> aux (mult_reals l acc) x
     in aux (INT 1) var;;
+
+  (*WARNING: all variables must be reduced*)
+  let rec add_var_to_monome var monome =
+    match monome with
+      | Monome(Atom(x)) -> 
+        (match var with
+          | Atom(y) when String.equal x y -> Monome(Vars(INT(2),Atom(x)))
+          | Atom(y) -> SUM(Monome(Atom(y)),Monome(Atom(x)))
+          | Vars(a,Atom(y)) when String.equal x y -> Monome(Vars(add_reals a (INT(1)), Atom(x)))
+          | Vars(a,Atom(y)) -> SUM(Monome(Atom(x)),Monome(Vars(a,Atom(y))))
+          | _ -> Monome(Atom(x)))
+      | Monome(Vars(a,Atom(x))) ->
+        (match var with
+          | Atom(y) when String.equal x y -> Monome(Vars(add_reals a (INT(1)), Atom(x)))
+          | Atom(y) -> SUM(Monome(Vars(a,Atom(x))),Monome(Atom(y)))
+          | Vars(b,Atom(y)) when String.equal x y -> Monome(Vars(add_reals a b,Atom(y)))
+          | Vars(b,Atom(y)) -> SUM(Monome(Vars(a,Atom(x))),Monome(Vars(b,Atom(y))))
+          | _ -> Monome(Atom(x))
+          )
+      | Monome(Vars(a,x)) -> Monome(Vars(a,x))
+        
+      | SUM(m1,m2) -> SUM(add_var_to_monome var m1,add_var_to_monome var m2)
   
   let equal_var a b = 
     match (reduce_nested_var a,reduce_nested_var b) with 
@@ -93,82 +118,128 @@ include Parser.Parser
       | MULT(a,b) -> print_string "("; pretty_print_expr a; print_string "*"; pretty_print_expr b; print_string ")"
       | EQUAL(a,b) -> print_string "("; pretty_print_expr a; print_string "="; pretty_print_expr b; print_string ")"
       | MINUS(a,b) -> print_string "("; pretty_print_expr a; print_string "-"; pretty_print_expr b; print_string ")"
-
+      
       | NULL -> print_string "ɛ"
     in pretty_print_expr expr;;
 
+  let rec add a b = 
+    print_expr a;
+    print_string " + ";
+    print_expr b;
+    print_newline ();
+    match a,b with 
+      (*basic expr*)
+      | Number a,NULL -> Number a
+      | Number a,Number b -> Number(add_reals a b)
+      | Number _,BOOL _ -> BOOL (false)
+      | Number a,Variable v -> PLUS(Number a,Variable v)
+      | Variable v,Number a -> PLUS(Number a,Variable v)
+      | Variable v,NULL -> Variable v
+      | Variable(v),Variable(v') -> add_vars v v'
+      | Variable _,BOOL _ -> BOOL(false)
+      | BOOL b,NULL -> BOOL b
+      | BOOL _,Number _ -> BOOL(false)
+      | BOOL _,Variable _ -> BOOL(false)
+      | BOOL b,BOOL c -> BOOL(c || b)
+      | NULL,Number(a) -> Number a 
+      | NULL,Variable v -> Variable v
+      | NULL,BOOL b -> BOOL b 
+      | NULL,NULL -> NULL
+
+      (*PLUS expr*)
+      | PLUS(a,b),PLUS(c,d) -> add (add a b) (add c d)
+      | PLUS(a,b),MULT(c,d) -> add (add a b) (mult c d)
+      | PLUS(_,_),MINUS(_,_) -> NULL
+      | PLUS(_,_),EQUAL(_,_) -> BOOL(false)
+
+      (*PLUS atom*)
+      | PLUS(a,b),NULL -> add a b
+      | PLUS(a,b),c -> add (add a b) c
+      | MULT(a,b),PLUS(c,d) -> add (mult a b) (add c d)
+      | a,PLUS(b,c) -> add a (add b c)
+      
+      (*MULT expr*)
+      | MULT(a,b),NULL -> mult a b
+      | MULT(a,b),MULT(c,d) -> add (mult a b) (mult c d)
+      | MULT(_,_),MINUS(_,_) -> NULL
+      | MULT(_,_),EQUAL(_,_) -> BOOL(false)
+
+      (*MULT atom*)
+      | MULT(a,b),c -> add (mult a b) c
+      | a,MULT(b,c) -> add a (mult b c)
+
+      | _,MINUS(_,_) -> NULL
+      | _,EQUAL(_,_) -> BOOL(false)
+      | MINUS(_,_),_ -> NULL
+      | EQUAL(_,_),_ -> BOOL(false)
 
 
+  and mult a b = 
+    print_expr a;
+    print_string " * ";
+    print_expr b;
+    print_newline ();
+    match a,b with
+      (*basic expr*)
+      | Number a, NULL -> Number(a)
+      | Number(a),Number(b) -> Number(mult_reals a b)
+      | Number(a),Variable(v) -> let b = (Vars(a,v)) in Variable(reduce_nested_var b)
+      | Number _,BOOL _ -> BOOL (false)
+      | Variable v,NULL -> Variable v
+      | Variable v,Number a -> let b = (Vars(a,v)) in Variable(reduce_nested_var b)
+      | Variable(v),Variable(v') -> mult_vars v v'
+      | Variable _,BOOL _ -> BOOL(false)
+      | BOOL b,NULL -> BOOL(b)
+      | BOOL _,Number _ -> BOOL(false)
+      | BOOL _,Variable _ -> BOOL(false)
+      | BOOL b,BOOL c -> BOOL(c && b)
+      | NULL,Number(a) -> Number a 
+      | NULL,Variable v -> Variable v
+      | NULL,BOOL b -> BOOL b 
+      | NULL,NULL -> NULL
+
+      (*PLUS expr*)
+      | PLUS(a,b),PLUS(c,d) -> add (add (mult a c) (mult a d)) (add (mult b c) (mult b d)) (*double distributivité*)
+      | PLUS(a,b),MULT(c,d) -> let cd = mult c d in add (mult a cd) (mult b cd)
+      | PLUS(_,_),MINUS(_,_) -> NULL
+      | PLUS(_,_),EQUAL(_,_) -> BOOL(false)
+
+      (*PLUS atom*)
+      | PLUS(a,b),NULL -> add a b
+      | PLUS(a,b),c -> add (mult a c) (mult b c) (*distributivité simple*)
+      | MULT(a,b),PLUS(c,d) -> let ab = mult a b in add (mult ab c) (mult ab d)
+      | a,PLUS(b,c) -> add (mult a b) (mult a c)
+
+      (*MULT expr*)
+      | MULT(a,b),NULL -> mult a b
+      | MULT(a,b),MULT(c,d) -> mult (mult a b) (mult c d)
+      | MULT(_,_),MINUS(_,_) -> NULL
+      | MULT(_,_),EQUAL(_,_) -> BOOL(false)
+
+      (*MULT atom*)
+      | MULT(a,b),c -> mult (mult a b) c
+      | a,MULT(b,c) -> mult a (mult b c)
+
+      | _,MINUS(_,_) -> NULL
+      | _,EQUAL(_,_) -> BOOL(false)
+      | MINUS(_,_),_ -> NULL
+      | EQUAL(_,_),_ -> BOOL(false)
+
+  let equal (_:expr) (_:expr) = NULL
+  let minus (_:expr) (_:expr) = NULL
+
+  let oppose_expr expr = mult (Number(INT(-1))) expr
 
   let rec reduce_expression expr = 
-      let rec add param1 param2 = 
-        match param1,param2 with
-          | Number(a),Number(b) -> Number(add_reals a b)
-          | Number(a),Variable(x) -> PLUS(Number(a),Variable(x))
-          | Variable(x),Variable(y) -> add_vars x y
-          | Variable(x),Number(a) -> PLUS(Number(a),Variable(x))
-          | a,PLUS(b,c) -> add (add a b) c (*associativité*)
-          | a,MULT(b,c) -> add a (mult b c)
-          | PLUS(b,c),a -> add (add b c) a (*associativité*)
-          | MULT(b,c),a -> add (mult b c) a
-          | a,MINUS(b,c) -> let c = oppose_expr c in add (add a b) c
-          | MINUS(a,b),c -> let c = oppose_expr c in add (add a b) c
-          | BOOL b,NULL -> BOOL b
-          | NULL,BOOL b -> BOOL b
-          | BOOL b,BOOL c -> BOOL (b || c)
-          | e,NULL -> e
-          | NULL,e -> e
-          | _ -> NULL
-    and mult param1 param2 = 
-        match param1,param2 with
-          | Number(a),Number(b) -> Number(mult_reals a b)
-          | Number(a),Variable(x) -> let v = (Vars(a,x)) in Variable(reduce_nested_var v)
-          | Variable(x),Variable(y) -> mult_vars x y
-          | Variable(x),Number(a) -> let v = (Vars(a,x)) in Variable(reduce_nested_var v)
-          | a,PLUS(b,c) -> add (mult a b) (mult a c) (*distributivité*)
-          | a,MULT(b,c) -> mult (mult a b) c (*associativité*)
-          | PLUS(b,c),a -> add (mult b a) (mult c a) (*distributivité*)
-          | MULT(b,c),a -> mult (mult b c) a (*associativité*)
-          | BOOL b,NULL -> BOOL b
-          | NULL,BOOL b -> BOOL b
-          | BOOL b, BOOL c -> BOOL (c && b)
-          | e,NULL -> e
-          | NULL,e -> e
-          | _ -> NULL
-    and oppose_expr a = mult a (Number(INT(-1)))
-    and minus param1 param2 = 
-        match param1,param2 with
-          | Number(a),Number(b) -> let b = oppose_reals b in Number(add_reals a b)
-          | Number(a),Variable(x) -> PLUS(Number(a),Variable(Vars(INT(-1),x)))
-          | Variable(x),Variable(y) -> sub_vars x y
-          | Variable(x),Number(a) -> MINUS(Variable(x),Number(a))
-          | a,PLUS(b,c) -> let b,c = oppose_expr b,oppose_expr c in add a (add b c)  (*associativité*)
-          | a,MULT(b,c) -> let d = oppose_expr (MULT(b,c)) in add a d
-          | PLUS(b,c),a -> let a = oppose_expr a in add b (add c a) (*associativité*)
-          | MULT(b,c),a -> let a = oppose_expr a in add (mult b c) a
-          | a,MINUS(b,c) -> let b,c = oppose_expr b,oppose_expr c in add a (add b c)
-          | MINUS(a,b),c -> let b,c = oppose_expr b,oppose_expr c in add a (add b c)
-          | BOOL b,NULL -> BOOL b
-          | NULL,BOOL b -> BOOL b
-          | BOOL b,BOOL c -> BOOL (not(b || c))
-          | e,NULL -> e
-          | NULL,e -> e
-          | _ -> NULL
-    and equal param1 param2 = 
-          let a = minus param1 param2 in 
-          match a with
-            | Number a -> BOOL(is_zero a)
-            | Variable(Vars(a,_)) -> BOOL(is_zero a)
-            | _ -> BOOL(false)
-    in match expr with 
-          | NULL -> NULL
-          | Number(a) -> Number(a)
-          | BOOL b -> BOOL b
-          | Variable(v) -> Variable(reduce_nested_var v)
-          | PLUS(a,b) -> let a,b = reduce_expression a,reduce_expression b in add a b
-          | MULT(a,b) -> let a,b = reduce_expression a,reduce_expression b in mult a b
-          | EQUAL(a,b) -> let a,b = reduce_expression a,reduce_expression b in equal a b
-          | MINUS(a,b) -> let a,b = reduce_expression a,reduce_expression b in minus a b
+     match expr with 
+      | NULL -> NULL
+      | Number(a) -> Number(a)
+      | BOOL b -> BOOL b
+      | Variable(v) -> Variable(reduce_nested_var v)
+      | PLUS(a,b) ->  let a,b = reduce_expression a,reduce_expression b in add a b
+      | MULT(a,b) -> let a,b = reduce_expression a,reduce_expression b in mult a b
+      | EQUAL(a,b) -> let a,b=reduce_expression a,reduce_expression b in equal a b
+      | MINUS(a,b) -> let a,b=reduce_expression a,reduce_expression b in minus a b
 
   let rec transform_ast_to_expression ast =
     match ast with 
