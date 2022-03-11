@@ -78,6 +78,13 @@ include Parser.Parser
       | Vars(l,Atom(x)),Vars(u,Atom(y)) -> BOOL(l=u && String.equal x y)
       | _ -> BOOL(false)
 
+
+  let are_compatible a b = 
+    match (reduce_nested_var a,reduce_nested_var b) with
+      | Atom(x),Atom(y) -> String.equal x y
+      | Vars(_,Atom(x)),Vars(_,Atom(y)) -> String.equal x y
+      | _ -> false
+
   let add_vars a b = 
     match reduce_nested_var(a),reduce_nested_var(b) with 
       | Atom(x),Atom(y) when String.equal x y -> Variable(Vars(INT(2),Atom(x)))
@@ -236,6 +243,9 @@ include Parser.Parser
       | Number(a) -> Number(a)
       | BOOL b -> BOOL b
       | Variable(v) -> Variable(reduce_nested_var v)
+      | PLUS(Variable(v),Number(a)) -> PLUS (Variable v,Number a)
+      | PLUS(Number a,Variable v) -> PLUS(Number a,Variable v)
+      | PLUS(Variable v,Variable v') when not (are_compatible v v') -> PLUS(Variable v,Variable v')
       | PLUS(a,b) ->  let a,b = reduce_expression a,reduce_expression b in add a b
       | MULT(a,b) -> let a,b = reduce_expression a,reduce_expression b in mult a b
       | EQUAL(a,b) -> let a,b=reduce_expression a,reduce_expression b in equal a b
